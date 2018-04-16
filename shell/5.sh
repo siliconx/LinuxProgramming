@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# present the result in a form of matrix
+# present the result in form of matrix
 # ROW: each file
 # COL: occurrence of each word
 

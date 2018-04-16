@@ -1,4 +1,4 @@
 #!/bin/bash
 
 # `seq` gen expression, `bc` calculating
-seq -s "*" $1 | bc
+printf "%d! = %s \n" $1 `seq -s "*" $1 | bc`
