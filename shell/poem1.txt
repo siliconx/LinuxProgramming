@@ -1,0 +1,10 @@
+A reentrant function,
+if interrupted,
+will return a result,
+which is not perturbed.
+int global_int;int is_not_reentrant(int x) { int x = x; return global_int + x; },
+depends on a global variable,
+which may change during execution.
+int global_int;int is_reentrant(int x) { int saved = global_int; return saved + x; },
+mitigates external dependency,
+it is reentrant, though not thread safe.
