@@ -4,7 +4,7 @@
 
 
 
-## Q1: Go Programming
+## Q1.1: Go Programming
 
 
 
@@ -66,11 +66,83 @@ go build
 
 #### step3.运行
 
-![](/home/siliconx/Pictures/Screenshot-from-2018-04-22-22-44-27.png)
+![](/home/siliconx/Pictures/Screenshot-from-2018-04-24-02-21-34.png)
 
 
 
-=======================================================================================
+
+
+## Q1.2将上述go程序部署成http服务
+
+#### step1.修改代码
+
+```go
+package main
+
+import (
+    "fmt"
+    "os"
+    "strconv"
+    "log"
+    "math"
+    "net/http"
+)
+
+var msg string
+func main() {
+    args_len := len(os.Args)
+    if args_len == 2 {  // is circle
+        r, err := strconv.ParseFloat(os.Args[1], 64)  // get radius
+
+        if err != nil {
+            msg = fmt.Sprintf("Args value ERROR")
+            log.Fatal(err)
+        } else {
+            perimeter := 2 * math.Pi * r
+            area := math.Pi * math.Pow(r, 2)
+            msg = fmt.Sprintf("This is a circle\nr = %.3f\nperimeter = %.3f\narea = %.3f", r, perimeter, area)
+        }
+    } else if args_len == 3 {  // is rectangle
+        a, err := strconv.ParseFloat(os.Args[1], 64)
+        b, err := strconv.ParseFloat(os.Args[2], 64)
+
+        if err != nil {
+            msg = fmt.Sprintln("Args value ERROR")
+            log.Fatal(err)
+        } else {
+            perimeter := 2 * (a + b)
+            area := a * b
+            msg = fmt.Sprintf("This is a rectangle\na = %.3f\nb = %.3f\nperimeter = %.3f\narea = %.3f", a, b, perimeter, area)
+        }
+    } else {
+        msg = fmt.Sprintf("Args ERROR")
+    }
+
+    fmt.Println(msg)
+    http.HandleFunc("/", http_server)
+    http.ListenAndServe(":8080", nil)
+}
+
+func http_server(response http.ResponseWriter, request *http.Request) {
+    fmt.Fprintf(response, msg)
+}
+```
+
+
+
+#### step2.运行结果
+
+![](/home/siliconx/Pictures/Screenshot-from-2018-04-24-02-22-51.png)
+
+![](/home/siliconx/Pictures/Screenshot-from-2018-04-24-02-23-27.png)
+
+![](/home/siliconx/Pictures/Screenshot-from-2018-04-24-02-24-02.png)
+
+
+
+
+
+***
 
 
 
@@ -121,8 +193,8 @@ done
 
 #### step2.运行
 
-![](/home/siliconx/Pictures/Screenshot-from-2018-04-22-22-33-37.png)
+![](/home/siliconx/code/linux/imgs/Screenshot-from-2018-04-22-22-33-37.png)
 
-![](/home/siliconx/Pictures/Screenshot-from-2018-04-22-22-34:-02.png)
+![](/home/siliconx/code/linux/imgs/Screenshot-from-2018-04-22-22-34-02.png)
 
-![](/home/siliconx/Pictures/Screenshot-from-2018-04-22-22-35-54.png)
+![](/home/siliconx/code/linux/imgs/Screenshot-from-2018-04-22-22-35-54.png)
