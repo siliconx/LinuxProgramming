@@ -41,7 +41,7 @@ func main() {
 
     fmt.Println(msg)
     http.HandleFunc("/", http_server)
-    http.ListenAndServe(":8080", nil)
+    http.ListenAndServe("0.0.0.0:8080", nil)
 }
 
 func http_server(response http.ResponseWriter, request *http.Request) {
