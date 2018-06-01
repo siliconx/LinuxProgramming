@@ -1,14 +1,15 @@
-// Server side C/C++ program to demonstrate Socket programming
+// Server Side
 #include <unistd.h>
 #include <stdio.h>
-#include <sys/socket.h>
 #include <stdlib.h>
-#include <netinet/in.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 #define PORT 8000
 #define BUFFER_SIZE 1024
 
 int main(int argc, char const *argv[]) {
+    printf("Server Running\n");
     int server_fd, new_socket, valread;
     struct sockaddr_in address;
     int opt = 1;
@@ -33,7 +34,7 @@ int main(int argc, char const *argv[]) {
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(PORT);
       
-    // Forcefully attaching socket to the port
+    // attaching socket to the port
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
         perror("bind failed");
         exit(EXIT_FAILURE);
@@ -51,11 +52,11 @@ int main(int argc, char const *argv[]) {
         }
 
         valread = read(new_socket, buffer, 1024);
-        printf("New message(No.%d): %s\n", count++, buffer);
+        printf("Message from client(No.%d): %s\n", count, buffer);
 
-        printf("Enter your message: ");
-        fgets(response, BUFFER_SIZE, stdin);
+        response = buffer;  // echo message
         send(new_socket, response, strlen(response), 0);
+        count++;
     }
     return 0;
 }

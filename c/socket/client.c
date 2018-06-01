@@ -1,13 +1,15 @@
 // Client side
 #include <stdio.h>
-#include <sys/socket.h>
 #include <stdlib.h>
-#include <netinet/in.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 #define PORT 8000
 #define BUFFER_SIZE 1024
-  
+#define SERVER_IP "127.0.0.1"
+
 int main(int argc, char const *argv[]) {
+    printf("Client Running\n");
     struct sockaddr_in address;
     int sock = 0, valread;
     struct sockaddr_in serv_addr;
@@ -16,7 +18,7 @@ int main(int argc, char const *argv[]) {
 
     while (1) {
         if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-            printf("\n Socket creation error \n");
+            printf("\n Socket create failed \n");
             return -1;
         }
 
@@ -27,7 +29,7 @@ int main(int argc, char const *argv[]) {
         serv_addr.sin_port = htons(PORT);
           
         // Convert IP addresses from text to binary form
-        if(inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr)<=0) {
+        if(inet_pton(AF_INET, SERVER_IP, &serv_addr.sin_addr)<=0) {
             printf("\nInvalid address\n");
             return -1;
         }
