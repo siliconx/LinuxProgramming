@@ -1,89 +1,55 @@
+// Client side
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#include <errno.h>
-#include <sys/types.h>
+#include <string.h>
 #include <sys/socket.h>
-#include <unistd.h>
 #include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
+#define PORT 8080
+#define IP_LEN 64
+#define BUFFER_SIZE 4096
+#define SERVER_ADDRESS "119.29.148.227"
 
-#define DEST_PORT 80
-#define BUFF_SIZE 4096
-#define DEST_IP_ADDR "10.0.9.139"
-#define DEST_IP_BY_NAME "demo.git.com"
+int main(int argc, char const *argv[]) {
+    printf("Client Running...\n");
+    struct sockaddr_in address;
+    int sock = 0, valread;
+    struct sockaddr_in serv_addr;
+    char* ip = (char*) malloc(IP_LEN * sizeof(char));  // ip address
+    char* request = "GET / HTTP/1.1\r\nHost: 119.29.148.227\r\n\r\n";
+    char buffer[BUFFER_SIZE] = {0};
 
+    printf("Enter IP: ");
+    scanf("%s", ip);
 
-void process_info(int socket_fd) {
-    int send_num;
-    char send_buf [] = "helloworld";
-    char recv_buf [BUFF_SIZE];
-    char str1[BUFF_SIZE];
-    while (1) {
-        printf("begin send\n");
-        memset(str1, 0, BUFF_SIZE);
-        strcat(str1, "POST http://demo.git.com/sum.php HTTP/1.1\r\n");
-        strcat(str1, "Host: demo.git.com\r\n");
-        strcat(str1, "Content-Length: 65\r\n");
-        strcat(str1, "Content-Type: application/x-www-form-urlencoded\r\n");
-        strcat(str1, "\r\n");
-        strcat(str1, "mathod=adb_signe&token=0E1FEECD0EE54E3B8568A536A7036D78B1AC7EEE");
-        strcat(str1, "\r\n\r\n");
-        printf("str1 = %s\n", str1);
-        send_num = send(socket_fd, str1, strlen(str1), 0);
-        if (send_num < 0) {
-            perror("send error");
-            exit(1);
-        } else {
-            printf("send successful\n");
-            printf("begin recv:\n");
-            int recv_num = recv(socket_fd, recv_buf, sizeof(recv_buf), 0);
-            if (recv_num < 0) {
-                perror("recv");
-                exit(1);
-            } else {
-                printf("recv sucess:%s\n", recv_buf);
-            }
-        }
-        break;
-        sleep(5);
+    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        printf("\n Socket create failed \n");
+        return -1;
     }
-}
+    printf("\n Socket created \n");
 
+    memset(&serv_addr, '0', sizeof(serv_addr));
 
-int main() {
-    int socket_fd;
-    struct sockaddr_in addr_serv;
-    socket_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (socket_fd < 0) {
-        perror("socket error");
-        exit(1);
-    } else {
-        printf("socket successful");
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(PORT);
+
+    // Convert IP addresses from text to binary form
+    if(inet_pton(AF_INET, ip, &serv_addr.sin_addr) <= 0) {
+        printf("\nInvalid address\n");
+        return -1;
     }
 
-    struct hostent* hostInfo = gethostbyname(DEST_IP_BY_NAME);  // get host infromation
-    if (NULL == hostInfo) {
-        printf("hostInfo is null\n");
-        return -6;
+    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        printf("\nConnection Failed \n");
+        return -1;
     }
+    printf("\n Connected \n");
 
-    memset(&addr_serv, 0, sizeof(addr_serv));
-    addr_serv.sin_family = AF_INET;
-    addr_serv.sin_port = htons(DEST_PORT);
-    //addr_serv.sin_addr.s_addr = inet_addr(DEST_IP_ADDR);
+    // printf("Enter a message: ");
+    // fgets(request, BUFFER_SIZE, stdin);
 
-    printf("Ip address = %s \n", inet_ntoa(*((struct in_addr*)hostInfo->h_addr)));
-    memcpy(&addr_serv.sin_addr, &(*hostInfo->h_addr_list[0]),
-        hostInfo->h_length);
+    send(sock, request, strlen(request), 0);
+    valread = read(sock ,buffer, 1024);
+    printf("Response: %s\n", buffer);
 
-    if (connect(socket_fd, (struct sockaddr*)(&addr_serv),
-        sizeof(addr_serv)) < 0) {
-        perror("connect error\n");
-        exit(1);
-    } else {
-        printf("connect successful\n");
-    }
-    process_info(socket_fd);
+    return 0;
 }
