@@ -9,7 +9,7 @@
 #define BUFFER_SIZE 1024
 
 int main(int argc, char const *argv[]) {
-    printf("Server Running\n");
+    printf("Server Running...\n");
     int server_fd, new_socket, valread;
     struct sockaddr_in address;
     int opt = 1;
@@ -33,7 +33,7 @@ int main(int argc, char const *argv[]) {
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(PORT);
-      
+
     // attaching socket to the port
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
         perror("bind failed");

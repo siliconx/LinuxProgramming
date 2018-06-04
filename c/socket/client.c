@@ -4,6 +4,8 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
+
 #define PORT 8000
 #define BUFFER_SIZE 1024
 #define SERVER_IP "127.0.0.1"
@@ -24,16 +26,16 @@ int main(int argc, char const *argv[]) {
 
 
         memset(&serv_addr, '0', sizeof(serv_addr));
-      
+
         serv_addr.sin_family = AF_INET;
         serv_addr.sin_port = htons(PORT);
-          
+
         // Convert IP addresses from text to binary form
         if(inet_pton(AF_INET, SERVER_IP, &serv_addr.sin_addr)<=0) {
             printf("\nInvalid address\n");
             return -1;
         }
-      
+
         if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
             printf("\nConnection Failed \n");
             return -1;

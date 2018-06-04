@@ -14,6 +14,7 @@
 char* proxy_server(int);
 char* proxy_client(const char*, char*, const char*);
 
+
 char* proxy_server(int proxy_port) {  // proxy server
     printf("Proxy Server Running on PORT: %d\n", proxy_port);
     int server_fd, tcp_socket, valread;
@@ -23,12 +24,12 @@ char* proxy_server(int proxy_port) {  // proxy server
     int opt = 1;
     int addrlen = sizeof(address);
     int msg_len = 0;  // message length
-    char* request_msg = malloc(BUFFER_SIZE * sizeof(char));
+    char* request_msg = (char*) malloc(BUFFER_SIZE * sizeof(char));
     char* new_msg = (char*) malloc(BUFFER_SIZE * sizeof(char));  // to store new mssage
     char* host = (char*) malloc(STR_SIZE * sizeof(char));
     char* port = (char*) malloc(STR_SIZE * sizeof(char));
     char* response_msg;  // Response string
-    char* replace_head = "GET / HTTP/1.1";
+    char* replace_head = "GET / HTTP/1.1\r\n";
 
     // socket file descriptor
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
@@ -98,7 +99,10 @@ char* proxy_server(int proxy_port) {  // proxy server
     free(request_msg);
 
     // now, resend the request to remote server
-    response_msg = proxy_client(host, port, request_msg);
+    // host = "good.ncu.edu.cn";
+    // port = "80";
+    printf("New Mssage: \n%s\n", new_msg);
+    response_msg = proxy_client(host, port, new_msg);
 
     // send response
     send(tcp_socket, response_msg, strlen(response_msg), 0);
@@ -110,6 +114,7 @@ char* proxy_server(int proxy_port) {  // proxy server
 }
 
 char* proxy_client(const char* host, char* str_port, const char* request) {  // proxy client
+
     printf("Proxy Client Running...\n");
     struct sockaddr_in address;
     int sock = 0, valread;
@@ -177,8 +182,15 @@ int main(int argc, char const *argv[]) {
 
     int port = atoi(argv[1]);
 
-    char* response_msg = proxy_server(port);
-    printf("%s\n", response_msg);
+    while (1) {
+        char* response_msg = proxy_server(port);
+        if (response_msg == NULL) {
+            printf("No Message\n");
+        } else {
+            printf("%s\n", response_msg);
+        }
+
+    }
 
     return 0;
 }
