@@ -1,19 +1,15 @@
 #include <stdio.h>  // for stdin/out
-#include <stdlib.h>  // for malloc
 #include <ctype.h>  // for islower/isupper, tolower/toupper
 #include <string.h>  // for strlen
-#include <sys/ipc.h>  // for key_t, ftok, IPC_CREAT
+#include <sys/ipc.h>  // for key_t, ftok, IPC_CREAT/IPC_RMID
 #include <sys/msg.h>  // for msgget/msgsnd/msgrcv/msgctl
 
 #define BUFFER_SIZE 256
 
-// for Up queue key
-#define KEY_PATH_UP "UP"
-#define KEY_ID_UP 32
-
-// for Down queue key
-#define KEY_PATH_DOWN "DOWN"
-#define KEY_ID_DOWN 8
+#define UP_KEY 16  // for Up queue key
+#define DOWN_KEY 8  // for Down queue key
+#define UP_MSG_TP 1  // for Up message type
+#define DOWN_MSG_TP 2  // for Down message type
 
 /**
 * Message Queue server.
@@ -37,15 +33,12 @@ int main(int argc, char const *argv[]) {
 }
 
 int down_queue_writer(char* original_msg) {  // Down queue writer
-    key_t key;
+    key_t key = DOWN_KEY;  // unique key for message
     int msgid;
-
-    // generate unique key by KEY_PATH_DOWN and KEY_ID_DOWN
-    key = ftok(/*path*/KEY_PATH_DOWN, /*id*/KEY_ID_DOWN);
 
     // create a message queue with `key` and returns its identifier
     msgid = msgget(key, 0666 | IPC_CREAT);
-    down_queue.msg_type = 1;
+    down_queue.msg_type = DOWN_MSG_TP;
 
     // copy message to Down queue
     strcpy(down_queue.msg_text, original_msg);
@@ -60,17 +53,15 @@ int down_queue_writer(char* original_msg) {  // Down queue writer
 }
 
 int up_queue_reader() {  // Down queue reader
-    key_t key;
+    key_t key = UP_KEY;  // unique key for message
     int msgid;
-
-    // generate unique key by KEY_PATH_UP and KEY_ID_UP
-    key = ftok(/*path*/KEY_PATH_UP, /*id*/KEY_ID_UP);
 
     // create a message queue with `key` and returns its identifier
     msgid = msgget(key, 0666 | IPC_CREAT);
 
     // receive message
-    msgrcv(msgid, &up_queue, sizeof(up_queue), 1, 0);
+    msgrcv(/*msqid*/msgid, /*msgp*/&up_queue, /*msgsz*/sizeof(up_queue),
+    /*msgtyp*/UP_MSG_TP, /*msgflg*/0);
 
     // send received message
     down_queue_writer(up_queue.msg_text);
