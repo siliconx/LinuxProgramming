@@ -1,10 +1,16 @@
 #include <stdio.h>
-#include <sys/ipc.h>
-#include <sys/msg.h>
+#include <sys/ipc.h>  // for key_t, ftok, IPC_CREAT
+#include <sys/msg.h>  // for msgget/msgsnd/msgrcv/msgctl
 
 #define BUFFER_SIZE 256
-#define KEY_PATH "nothing"
-#define KEY_ID 16
+
+// for Up queue key
+#define KEY_PATH_UP "UP"
+#define KEY_ID_UP 16
+
+// for Down queue key
+#define KEY_PATH_DOWN "DOWN"
+#define KEY_ID_DOWN 8
 
 /**
 * Message Queue Client.
@@ -12,7 +18,7 @@
 * reader of Down queue
 */
 
-struct msg_buffer {  // structure for message queue
+struct msg_queue {  // structure for message queue
     long msg_type;
     char msg_text[BUFFER_SIZE];
 } down_queue, up_queue;
@@ -22,7 +28,6 @@ int down_queue_reader();  // Down queue reader
 
 int main(int argc, char const *argv[]) {
     up_queue_writer();
-    down_queue_reader();
     return 0;
 }
 
@@ -30,18 +35,24 @@ int up_queue_writer() {
     key_t key;
     int msgid;
 
-    // ftok to generate unique key from KEY_PATH and KEY_ID
-    key = ftok(/*path*/KEY_PATH, /*id*/KEY_ID);
-    // msgget creates a message queue
-    // and returns identifier
+    // generate unique key by KEY_PATH_UP and KEY_ID_UP
+    key = ftok(/*path*/KEY_PATH_UP, /*id*/KEY_ID_UP);
+    int int_key = key;
+    printf("key: %d\n", int_key);
+
+    // create a message queue with `key` and returns its identifier
     msgid = msgget(key, 0666 | IPC_CREAT);
     up_queue.msg_type = 1;
 
+    // input message
     printf("Insert message to send to server: ");
     fgets(up_queue.msg_text, sizeof(up_queue.msg_text), stdin);
 
     // msgsnd to send message
     msgsnd(msgid, &up_queue, sizeof(up_queue), 0);
+
+    // now waitting for the message send from server in Down queue
+    down_queue_reader();
 
     return 0;
 }
@@ -50,21 +61,21 @@ int down_queue_reader() {
     key_t key;
     int msgid;
 
-    // ftok to generate unique key from KEY_PATH and KEY_ID
-    key = ftok(/*path*/KEY_PATH, /*id*/KEY_ID);
+    // generate unique key by KEY_PATH_DOWN and KEY_ID_DOWN
+    key = 2;//ftok(/*path*/KEY_PATH_DOWN, /*id*/KEY_ID_DOWN);
+    int int_key = key;
+    printf("key: %d\n", int_key);
 
-    // msgget creates a message queue
-    // and returns identifier
+    // create a message queue with `key` and returns its identifier
     msgid = msgget(key, 0666 | IPC_CREAT);
 
-    // msgrcv to receive message
+    // receive message
     msgrcv(msgid, &down_queue, sizeof(down_queue), 1, 0);
 
-    // display the message
-    printf("Msg processed: %s \n",
-                    down_queue.msg_text);
+    // show the message get from Down queue
+    printf("Msg processed: %s \n", down_queue.msg_text);
 
-    // to destroy the message queue
+    // destroy the queue
     msgctl(msgid, IPC_RMID, NULL);
 
     return 0;
