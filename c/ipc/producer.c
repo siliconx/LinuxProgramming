@@ -12,8 +12,11 @@
 
 #define KEY 1
 #define MAX 5
+#define N 20
 
 int main() {
+    printf("Producer running...\n");
+
     // ftok to generate unique key
     key_t key = KEY;
 
@@ -30,20 +33,21 @@ int main() {
     // Use current time as seed for random generator
     srand(time(0));
 
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 0; i < N; ++i) {
+        printf("\n=========================No.%d=========================\n", i);
         printf("Waitting until shelf available...\n");
         sem_wait(avail);
         printf("Shelf available, now checking the number of items on the shelf...\n");
         if ((*shelf) < MAX) {
             printf("Shelf not full, putting a item to the shelf...\n");
             ++(*shelf);
-            printf("Now, there are %d items on the shelf\n", (*shelf));
+            printf("Now, there are %d items on the shelf.\n", (*shelf));
         } else {
             printf("Shelf is full, let it go!\n");
         }
-        sleep(rand() % 2);
+
         sem_post(avail);
-        printf("=============================================\n");
+        sleep(rand() % 3);
     }
 
     printf("I'm tired, bye bye!\n");

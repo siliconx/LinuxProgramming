@@ -24,11 +24,12 @@ int up_queue_writer();  // Up queue writer
 int down_queue_reader();  // Down queue reader
 
 int main(int argc, char const *argv[]) {
+    printf("Message Queue Client Running...\n");
     up_queue_writer();
     return 0;
 }
 
-int up_queue_writer() {
+int up_queue_writer() {  // Up queue writer
     key_t key = UP_KEY;  // unique key for message
     int msgid;
 
@@ -40,7 +41,7 @@ int up_queue_writer() {
     printf("Insert message to send to server: ");
     fgets(up_queue.msg_text, sizeof(up_queue.msg_text), stdin);
 
-    // msgsnd to send message
+    // send message
     msgsnd(msgid, &up_queue, sizeof(up_queue), 0);
 
     // now waitting for the message send from server in Down queue
@@ -49,7 +50,7 @@ int up_queue_writer() {
     return 0;
 }
 
-int down_queue_reader() {
+int down_queue_reader() {  // Down Queue reader
     key_t key = DOWN_KEY;  // unique key for message
     int msgid;
 
@@ -57,6 +58,7 @@ int down_queue_reader() {
     msgid = msgget(key, 0666 | IPC_CREAT);
 
     // receive message
+    printf("Waitting for message in Down Queue arrive...\n");
     msgrcv(/*msqid*/msgid, /*msgp*/&down_queue, /*msgsz*/sizeof(down_queue),
     /*msgtyp*/DOWN_MSG_TP, /*msgflg*/0);
 

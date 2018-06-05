@@ -1,8 +1,8 @@
 #include <stdio.h>  // for stdin/out
-#include <ctype.h>  // for islower/isupper, tolower/toupper
-#include <string.h>  // for strlen
+#include <ctype.h>  // for islower()/isupper(), tolower()/toupper()
+#include <string.h>  // for strlen()
 #include <sys/ipc.h>  // for key_t, ftok, IPC_CREAT/IPC_RMID
-#include <sys/msg.h>  // for msgget/msgsnd/msgrcv/msgctl
+#include <sys/msg.h>  // for msgget()/msgsnd()/msgrcv()/msgctl()
 
 #define BUFFER_SIZE 256
 
@@ -28,6 +28,7 @@ int up_queue_reader();  // Up queue reader
 int reverse(char*, int);  // reverse char (upper to lower, lower to upper)
 
 int main(int argc, char const *argv[]) {
+    printf("Message Queue Server Running...\n");
     up_queue_reader();
     return 0;
 }
@@ -46,13 +47,13 @@ int down_queue_writer(char* original_msg) {  // Down queue writer
     // reverse message
     reverse(down_queue.msg_text, strlen(down_queue.msg_text));
 
-    // msgsnd to send message
+    // send message
     msgsnd(msgid, &down_queue, sizeof(down_queue), 0);
 
     return 0;
 }
 
-int up_queue_reader() {  // Down queue reader
+int up_queue_reader() {  // Up queue reader
     key_t key = UP_KEY;  // unique key for message
     int msgid;
 
@@ -60,10 +61,11 @@ int up_queue_reader() {  // Down queue reader
     msgid = msgget(key, 0666 | IPC_CREAT);
 
     // receive message
+    printf("Waitting for message in Up Queue arrive...\n");
     msgrcv(/*msqid*/msgid, /*msgp*/&up_queue, /*msgsz*/sizeof(up_queue),
     /*msgtyp*/UP_MSG_TP, /*msgflg*/0);
 
-    // send received message
+    // send the received message to Down Queue
     down_queue_writer(up_queue.msg_text);
 
     // destroy the queue

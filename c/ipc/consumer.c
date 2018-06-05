@@ -9,8 +9,10 @@
 
 #define KEY 1
 #define MIN 0
+#define M 5
 
 int main() {
+    printf("Consumer running...\n");
     // unique key
     key_t key = KEY;
 
@@ -26,20 +28,35 @@ int main() {
     // Use current time as seed for random generator
     srand(time(0));
 
+    // count
+    int count = 0;
+
+    // times of shelf in empty status continuously
+    int times = 0;
+
     while (1) {
+        printf("\n=========================No.%d=========================\n", count);
         printf("Waitting until shelf available...\n");
         sem_wait(avail);
         printf("Shelf available, now checking the number of items on the shelf...\n");
         if ((*shelf) > MIN) {
             printf("Shelf not empty, getting a item from the shelf...\n");
             --(*shelf);
-            printf("Now, there are %d items on the shelf\n", (*shelf));
+            printf("Now, there are %d items on the shelf.\n", (*shelf));
+            times = 0;
         } else {
+            ++times;
             printf("Shelf is empty, let it go!\n");
         }
-        sleep(rand() % 2);
+
         sem_post(avail);
-        printf("=============================================\n");
+        sleep(rand() % 3 + 1);
+
+        if (times >= M) {
+            printf("Times up, Shelf is empty in %d times continuously, Maybe the producer was tired.\nI have to exist, too.\nBye!!!\n", M);
+            break;
+        }
+        ++count;
     }
 
     //detach from shared memory
