@@ -1,0 +1,7 @@
+#main/Makefile
+
+all: ipc_msgq
+
+ipc_msgq: msgq_server.c msgq_client.c
+		gcc msgq_server.c -o msgq_server
+		gcc msgq_client.c -o msgq_client

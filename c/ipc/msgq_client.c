@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include <stdio.h>  // for stdin/out
 #include <sys/ipc.h>  // for key_t, ftok, IPC_CREAT/IPC_RMID
 #include <sys/msg.h>  // for msgget/msgsnd/msgrcv/msgctl
 

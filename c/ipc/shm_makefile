@@ -1,0 +1,7 @@
+#main/Makefile
+
+all: ipc_shm
+
+ipc_shm: producer.c consumer.c
+		gcc producer.c -o producer -pthread
+		gcc consumer.c -o consumer -pthread -lrt

@@ -30,6 +30,7 @@ int reverse(char*, int);  // reverse char (upper to lower, lower to upper)
 int main(int argc, char const *argv[]) {
     printf("Message Queue Server Running...\n");
     up_queue_reader();
+    printf("Done!\n");
     return 0;
 }
 
@@ -48,6 +49,7 @@ int down_queue_writer(char* original_msg) {  // Down queue writer
     reverse(down_queue.msg_text, strlen(down_queue.msg_text));
 
     // send message
+    printf("Sending message...\n");
     msgsnd(msgid, &down_queue, sizeof(down_queue), 0);
 
     return 0;
@@ -65,6 +67,8 @@ int up_queue_reader() {  // Up queue reader
     msgrcv(/*msqid*/msgid, /*msgp*/&up_queue, /*msgsz*/sizeof(up_queue),
     /*msgtyp*/UP_MSG_TP, /*msgflg*/0);
 
+    printf("Received message: %s", up_queue.msg_text);
+
     // send the received message to Down Queue
     down_queue_writer(up_queue.msg_text);
 
@@ -75,6 +79,7 @@ int up_queue_reader() {  // Up queue reader
 }
 
 int reverse(char* msg, int len) {
+    printf("Processing message...\n");
     char c;
     for (int i = 0; i < len; ++i) {
         c = msg[i];
