@@ -1,6 +1,7 @@
 // Server Side
-#include <string>
 #include <iostream>
+#include <string>
+#include <regex>  // 正则
 
 #include <unistd.h>
 #include <stdio.h>
@@ -11,54 +12,45 @@
 #include <arpa/inet.h>  // inet_ntop/inet_pton
 #include <netdb.h>  // gethostbyname
 
-#define BUFFER_SIZE 4096
-#define STR_SIZE 64
-#define START 8  // len("CONNECT ") == 8
-
-const char* proxy_server(int);
-const char* proxy_client(const char*, char*, const char*);
+#define PORT 8888
+#define STR_SIZE 640
+#define BUFFER_SIZE 40960
 
 using namespace std;
 
+int proxy_server();
+string proxy_client(string, int, string);
+struct proxy_info rewrite_header(string);
+
+struct proxy_info {
+    string msg;
+    string hostname;
+    int port;
+};
 
 int main(int argc, char const *argv[]) {
-    if (argc != 2) {
-        printf("USAGE: [PORT]\n");
-        return -1;
+   while(1) {
+        proxy_server();
     }
-
-    int port = atoi(argv[1]);
-
-    while (1) {
-        const char* response_msg = proxy_server(port);
-        string resp(response_msg);
-        if (response_msg == NULL) {
-            printf("No Message\n");
-        } else {
-            cout << resp << endl;
-        }
-
-    }
+    // struct proxy_info d = rewrite_header(str.c_str());
 
     return 0;
 }
 
-
-const char* proxy_server(int proxy_port) {  // proxy server
-    printf("Proxy Server Running on PORT: %d\n", proxy_port);
+int proxy_server() {
+    /*
+    * 代理服务端，负责
+    */
+    printf("Proxy Server Running on PORT: %d\n", PORT);
     int server_fd, tcp_socket, valread;
     struct sockaddr_in address;
-
-    int i, j, k;
     int opt = 1;
     int addrlen = sizeof(address);
     int msg_len = 0;  // message length
-    char* request_msg = (char*) malloc(BUFFER_SIZE * sizeof(char));
-    char* new_msg = (char*) malloc(BUFFER_SIZE * sizeof(char));  // to store new mssage
-    char* host = (char*) malloc(STR_SIZE * sizeof(char));
-    char* port = (char*) malloc(STR_SIZE * sizeof(char));
-    const char* response_msg;  // Response string
-    const char* replace_head = "GET / HTTP/1.1\r\n";
+
+    char* temp_msg = (char*) malloc(BUFFER_SIZE * sizeof(char));  // request message
+    string request;
+    string response = "HTTP/1.1 200 OK\r\nCache-Control: no-cache, private\r\n\r\nhello";  // Response string
 
     // socket file descriptor
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
@@ -74,7 +66,7 @@ const char* proxy_server(int proxy_port) {  // proxy server
 
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(proxy_port);
+    address.sin_port = htons(PORT);
 
     // attaching socket to the port
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
@@ -92,74 +84,43 @@ const char* proxy_server(int proxy_port) {  // proxy server
         exit(EXIT_FAILURE);
     }
 
-    valread = read(tcp_socket, request_msg, BUFFER_SIZE);
+    valread = read(tcp_socket, temp_msg, BUFFER_SIZE);
+    request = temp_msg;
+    free(temp_msg);
+
+    fflush(stdout);
 
     // replace request message, which has proxy information
-    msg_len = strlen(request_msg);
-    for (i = 0; i < msg_len; ++i) {
-        if (request_msg[i] == '\r' && request_msg[++i]  == '\n') {
-            break;
-        }
-    }
-    strcat(new_msg, replace_head);
-    strcat(new_msg, request_msg + i + 1);
-    printf("Original Message:\n%s\n", request_msg);
+    struct proxy_info new_info = rewrite_header(request);
 
-    // get HOST
-    for (j = START; j < i; ++j) {
-        if (request_msg[j] == ':') {
-            break;
-        }
-        /* code */
-    }
-    strncpy(host, request_msg + START, j - START);
-    printf("Remote HOST: %s\n", host);
+    // resend request to real server
+    response = proxy_client(new_info.hostname, new_info.port, new_info.msg);
 
-    // get PORT
-    for (k = j; k < i; ++k) {
-        if (request_msg[k] == ' ') {
-            break;
-        }
-    }
-    strncpy(port, request_msg + j + 1, k - j);
-    printf("Remote PORT: %s\n", port);
-
-    // release the old requst message
-    free(request_msg);
-
-    // now, resend the request to remote server
-    // host = "good.ncu.edu.cn";
-    // port = "80";
-    printf("New Mssage: \n%s\n", new_msg);
-    response_msg = proxy_client(host, port, new_msg);
-
-    // send response
-    send(tcp_socket, response_msg, strlen(response_msg), 0);
-
-    // close sokect
+    // string str = "GET / HTTP/1.1\r\nHost: 119.29.148.227\r\nProxy-Connection: keep-alive\r\nUser-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/67.0.3396.62 Chrome/67.0.3396.62 Safari/537.36\r\n\r\n";
+    // response = proxy_client("119.29.148.227", 80, str);
+ 
+    send(tcp_socket, response.c_str(), (int) response.length(), 0);
     close(tcp_socket);
 
-    return response_msg;
+    cout << "===========respones===========\n" << response << endl;
+
+    return 0;
 }
 
-const char* proxy_client(const char* host, char* str_port, const char* request) {  // proxy client
-
+string proxy_client(string host, int port, string request) {  // proxy client
     printf("Proxy Client Running...\n");
-    struct sockaddr_in address;
     int sock = 0, valread;
-    int port;
     struct sockaddr_in serv_addr;
-    char ip[STR_SIZE];  // ip address
-    char* response_msg = (char*) malloc(BUFFER_SIZE * sizeof(char));
     char **pptr;
     struct hostent *hptr;
 
-    // port to int
-    port = atoi(str_port);
+    char ip[STR_SIZE];  // ip address
+    char* temp_msg = (char*) malloc(BUFFER_SIZE * sizeof(char));
+    string response;
 
     // Convert HOSTNAME to IP
-    if ((hptr = gethostbyname(host)) == NULL) {
-        fprintf(stderr, " gethostbyname error for host: %s\n", host);
+    if ((hptr = gethostbyname(host.c_str())) == NULL) {
+        fprintf(stderr, " gethostbyname error for host: %s\n", host.c_str());
         return NULL;
     }
     printf("HOSTNAME: %s\n", hptr->h_name);
@@ -197,8 +158,52 @@ const char* proxy_client(const char* host, char* str_port, const char* request) 
     }
     printf("\n Connected \n");
 
-    send(sock, request, strlen(request), 0);
-    valread = read(sock ,response_msg, 1024);
+    send(sock, request.c_str(), (int) request.length(), 0);
+    valread = read(sock ,temp_msg, 1024);
+    close(sock);
+    response = temp_msg;
+    free(temp_msg);
 
-    return response_msg;
+    return response;
+}
+
+
+struct proxy_info rewrite_header(string original_msg) {
+    string new_msg;
+    string full_host;
+    string hostname;
+    string port = "80";
+    struct proxy_info rewrite_data;
+
+    regex extra_host_re("Host: (.*)\r\n");  // regex for extra HOST
+    regex replace_re("CONNECT.*\r\n");  // regex for replace line with `CONNECT`
+    regex split_re("(.*):(\\d*)");  // split hostname and port
+    smatch sm;  // 存放string结果的容器
+
+    regex_search(original_msg, sm, extra_host_re);
+    if (sm.size() > 1) {
+        hostname = full_host = sm[1];
+    }
+
+    if (!full_host.empty()) {
+        regex_search(full_host, sm, split_re);
+        if (sm.size() > 2) {
+            hostname = sm[1];
+            port = sm[2];
+        }
+    }
+
+    // 去除请求头的CONNECT行
+    new_msg = regex_replace(original_msg, replace_re, "");
+
+    rewrite_data.msg = new_msg;
+    rewrite_data.hostname = hostname;
+    rewrite_data.port = atoi(port.c_str());
+
+    cout << "original message\n" << original_msg << endl;
+    cout << "new message\n" << rewrite_data.msg << endl;
+    cout << "hostname: " << rewrite_data.hostname << endl;
+    cout << "port: " << rewrite_data.port << endl;
+
+    return rewrite_data;
 }
