@@ -1,45 +1,29 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+#include <regex>
+#include <string>
+#include <iostream>
+using namespace std;
 
-#define STR_SIZE 64
-#define BUFFER_SIZE 4096
-#define START 8
+int main() {
+    // 是否匹配整个序列，第一个参数为被匹配的str，第二个参数为regex对象
+    cout << regex_match("123", regex("[0-9]+")) << endl;
 
-int main(int argc, char const *argv[]) {
-    char* replace_head = "GET / HTTP/1.1\r\n";
-    char* str = "CONNECT www.google.com:443 HTTP/1.1\r\nHost: www.google.com:443";
-    int len = strlen(str);
-    int i, j, k;
-    for (i = 0; i < len; ++i) {
-        if (str[i] == '\r' && str[++i]  == '\n') {
-            break;
-        }
+    // regex搜索
+    string str = "subject";
+    regex re("(sub)(.*)");
+    smatch sm;   // 存放string结果的容器
+    regex_match(str, sm, re);
+    for(int i = 0; i < sm.size(); ++i)
+        cout << sm[i] << " ";
+    cout << endl;
+
+    // regex搜索多次
+    str = "!!!123!!!12333!!!890!!!";
+    re = regex("[0-9]+");
+    while(regex_search(str, sm, re)) {
+        for(int i = 0; i < sm.size(); ++i)
+            cout << sm[i] << " ";
+        cout << endl;
+        str = sm.suffix().str();
     }
-    char* new_str = (char*) malloc(BUFFER_SIZE * sizeof(char));
-    char* host = (char*) malloc(STR_SIZE * sizeof(char));
-    char* port = (char*) malloc(STR_SIZE * sizeof(char));
-    strcat(new_str, replace_head);
-    strcat(new_str, str + i + 1);
-
-    for (j = START; j < i; ++j) {
-        if (str[j] == ':') {
-            break;
-        }
-        /* code */
-    }
-
-    for (k = j; k < i; ++k) {
-        if (str[k] == ' ') {
-            break;
-        }
-    }
-
-    strncpy(host, str + START, j - START);
-    strncpy(port, str + j + 1, k - j);
-
-    printf("HOST: %s\n", host);
-    printf("PORT: %s\n", port);
-    printf("%s\n", new_str);
     return 0;
 }

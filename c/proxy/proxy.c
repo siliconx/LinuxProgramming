@@ -1,21 +1,50 @@
 // Server Side
+#include <string>
+#include <iostream>
+
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>  // inet_ntop/inet_pton
 #include <netdb.h>  // gethostbyname
 
 #define BUFFER_SIZE 4096
 #define STR_SIZE 64
 #define START 8  // len("CONNECT ") == 8
 
-char* proxy_server(int);
-char* proxy_client(const char*, char*, const char*);
+const char* proxy_server(int);
+const char* proxy_client(const char*, char*, const char*);
+
+using namespace std;
 
 
-char* proxy_server(int proxy_port) {  // proxy server
+int main(int argc, char const *argv[]) {
+    if (argc != 2) {
+        printf("USAGE: [PORT]\n");
+        return -1;
+    }
+
+    int port = atoi(argv[1]);
+
+    while (1) {
+        const char* response_msg = proxy_server(port);
+        string resp(response_msg);
+        if (response_msg == NULL) {
+            printf("No Message\n");
+        } else {
+            cout << resp << endl;
+        }
+
+    }
+
+    return 0;
+}
+
+
+const char* proxy_server(int proxy_port) {  // proxy server
     printf("Proxy Server Running on PORT: %d\n", proxy_port);
     int server_fd, tcp_socket, valread;
     struct sockaddr_in address;
@@ -28,8 +57,8 @@ char* proxy_server(int proxy_port) {  // proxy server
     char* new_msg = (char*) malloc(BUFFER_SIZE * sizeof(char));  // to store new mssage
     char* host = (char*) malloc(STR_SIZE * sizeof(char));
     char* port = (char*) malloc(STR_SIZE * sizeof(char));
-    char* response_msg;  // Response string
-    char* replace_head = "GET / HTTP/1.1\r\n";
+    const char* response_msg;  // Response string
+    const char* replace_head = "GET / HTTP/1.1\r\n";
 
     // socket file descriptor
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
@@ -113,7 +142,7 @@ char* proxy_server(int proxy_port) {  // proxy server
     return response_msg;
 }
 
-char* proxy_client(const char* host, char* str_port, const char* request) {  // proxy client
+const char* proxy_client(const char* host, char* str_port, const char* request) {  // proxy client
 
     printf("Proxy Client Running...\n");
     struct sockaddr_in address;
@@ -172,25 +201,4 @@ char* proxy_client(const char* host, char* str_port, const char* request) {  // 
     valread = read(sock ,response_msg, 1024);
 
     return response_msg;
-}
-
-int main(int argc, char const *argv[]) {
-    if (argc != 2) {
-        printf("USAGE: [PORT]\n");
-        return -1;
-    }
-
-    int port = atoi(argv[1]);
-
-    while (1) {
-        char* response_msg = proxy_server(port);
-        if (response_msg == NULL) {
-            printf("No Message\n");
-        } else {
-            printf("%s\n", response_msg);
-        }
-
-    }
-
-    return 0;
 }
