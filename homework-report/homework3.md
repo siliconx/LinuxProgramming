@@ -50,8 +50,15 @@ struct proxy_info {
 };
 
 int main(int argc, char const *argv[]) {
+    int port = 8888;
+    if (argc != 2) {
+        printf("USAGE: %s PORT\n", argv[0]);
+        exit(0);
+    }
+
+   port = atoi(argv[1]);
    while(1) {
-        proxy_server();
+        proxy_server(port);
     }
 
     return 0;
@@ -69,9 +76,9 @@ int proxy_server(int port) {
     int addrlen = sizeof(address);
     int msg_len = 0;  // message length
 
-    char* temp_msg = (char*) malloc(BUFFER_SIZE * sizeof(char));  // request message
+    char* temp_msg = (char*) malloc(BUFFER_SIZE * sizeof(char));  // 用于临时存放请求消息
     string request;
-    string response = "HTTP/1.1 200 OK\r\nCache-Control: no-cache, private\r\n\r\nhello";  // Response string
+    string response;  // 相应消息
 
     // socket file descriptor
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
@@ -111,14 +118,11 @@ int proxy_server(int port) {
 
     fflush(stdout);
 
-    // replace request message, which has proxy information
+    // 提取请求信息
     struct proxy_info new_info = rewrite_header(request);
 
-    // resend request to real server
+    // 转发请求
     response = proxy_client(new_info.hostname, new_info.port, new_info.msg);
-
-    // string str = "GET / HTTP/1.1\r\nHost: 119.29.148.227\r\nProxy-Connection: keep-alive\r\nUser-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/67.0.3396.62 Chrome/67.0.3396.62 Safari/537.36\r\n\r\n";
-    // response = proxy_client("119.29.148.227", 80, str);
 
     send(tcp_socket, response.c_str(), (int) response.length(), 0);
     close(tcp_socket);
@@ -131,7 +135,7 @@ int proxy_server(int port) {
 string proxy_client(string host, int port, string request) {
     /**
     * 代理客户端，充当客户端给服务器发送请求
-    * 并转发相应
+    * 并转发响应
     */
     printf("Proxy Client Running...\n");
     int sock = 0, valread;
@@ -143,7 +147,7 @@ string proxy_client(string host, int port, string request) {
     char* temp_msg = (char*) malloc(BUFFER_SIZE * sizeof(char));
     string response;
 
-    // Convert HOSTNAME to IP
+    // 将域名转换为ip
     if ((hptr = gethostbyname(host.c_str())) == NULL) {
         fprintf(stderr, " gethostbyname error for host: %s\n", host.c_str());
         return NULL;
@@ -171,7 +175,7 @@ string proxy_client(string host, int port, string request) {
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(port);
 
-    // Convert IP addresses from text to binary form
+    // 将ip转为二进制格式
     if(inet_pton(AF_INET, ip, &serv_addr.sin_addr) <= 0) {
         printf("\n Invalid address \n");
         return NULL;
@@ -200,9 +204,9 @@ struct proxy_info rewrite_header(string original_msg) {
     string port = "80";
     struct proxy_info rewrite_data;
 
-    regex extra_host_re("Host: (.*)\r\n");  // regex for extra HOST
-    regex replace_re("CONNECT.*\r\n");  // regex for replace line with `CONNECT`
-    regex split_re("(.*):(\\d*)");  // split hostname and port
+    regex extra_host_re("Host: (.*)\r\n");  // 提取Host
+    regex replace_re("CONNECT.*\r\n");  // 替换带有 `CONNECT` 的行
+    regex split_re("(.*):(\\d*)");  // 分割Host的域名和端口号
     smatch sm;  // 存放string结果的容器
 
     regex_search(original_msg, sm, extra_host_re);
