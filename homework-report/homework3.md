@@ -16,7 +16,8 @@
 
 I.proxy.c
 
->
+> 由proxy_server负责接收客户端的请求，再由proxy_client负责把客户端的请求发送给服务器。
+> 在中转请求的时候，需要提取请求的信息，如 域名 端口号等，这就需要用到正则表达式
 
 ```c++
 // Server Side
@@ -33,13 +34,12 @@ I.proxy.c
 #include <arpa/inet.h>  // inet_ntop/inet_pton
 #include <netdb.h>  // gethostbyname
 
-#define PORT 8888
 #define STR_SIZE 640
 #define BUFFER_SIZE 40960
 
 using namespace std;
 
-int proxy_server();
+int proxy_server(int);
 string proxy_client(string, int, string);
 struct proxy_info rewrite_header(string);
 
@@ -57,11 +57,12 @@ int main(int argc, char const *argv[]) {
     return 0;
 }
 
-int proxy_server() {
+int proxy_server(int port) {
     /*
-    * 代理服务端，负责接
+    * 代理服务器，负责接收客户端的请求
+    * 并把请求转发到proxy_client
     */
-    printf("Proxy Server Running on PORT: %d\n", PORT);
+    printf("Proxy Server Running on PORT: %d\n", port);
     int server_fd, tcp_socket, valread;
     struct sockaddr_in address;
     int opt = 1;
@@ -86,7 +87,7 @@ int proxy_server() {
 
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(PORT);
+    address.sin_port = htons(port);
 
     // attaching socket to the port
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
@@ -127,7 +128,11 @@ int proxy_server() {
     return 0;
 }
 
-string proxy_client(string host, int port, string request) {  // proxy client
+string proxy_client(string host, int port, string request) {
+    /**
+    * 代理客户端，充当客户端给服务器发送请求
+    * 并转发相应
+    */
     printf("Proxy Client Running...\n");
     int sock = 0, valread;
     struct sockaddr_in serv_addr;
