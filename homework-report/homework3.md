@@ -4,17 +4,20 @@
 
 
 
-## Q1.1: HTTP代理
+## Q: HTTP代理
 
 
 
-#### step.1原理分析
+#### 0x01 原理分析
 
-![](/home/siliconx/code/LinuxProgramming/homework-report/Untitled Diagram.png)
+![](/home/siliconx/code/LinuxProgramming/homework-report/Diagram.png)
 
-####step.2 编写源码
+####0x02 编写源码
 
 I.proxy.c
+
+>
+
 ```c++
 // Server Side
 #include <iostream>
@@ -56,7 +59,7 @@ int main(int argc, char const *argv[]) {
 
 int proxy_server() {
     /*
-    * 代理服务端，负责
+    * 代理服务端，负责接
     */
     printf("Proxy Server Running on PORT: %d\n", PORT);
     int server_fd, tcp_socket, valread;
@@ -247,147 +250,36 @@ clean:
 
 
 
-#### step3. 编译
+#### 0x03 编译
 
 ```bash
 make
 ```
 
-![](/home/siliconx/Pictures/Screenshot from 2018-06-17 03-28-22.png)
+![](../imgs/Screenshotfrom2018-06-1703-28-22.png)
 
 
 
-#### step3.运行
+#### 0x04 设置电脑的网络代理
 
-![](/home/siliconx/Pictures/Screenshot-from-2018-04-24-02-21-34.png)
-
-
+![](../imgs/Screenshotfrom2018-06-1704-39-34.png)
 
 
 
-## Q1.2将上述go程序部署成http服务
+#### 0x05 重启 && 运行代理程序
 
-#### step1.修改代码
-
-```go
-package main
-
-import (
-    "fmt"
-    "os"
-    "strconv"
-    "log"
-    "math"
-    "net/http"
-)
-
-var msg string
-func main() {
-    args_len := len(os.Args)
-    if args_len == 2 {  // is circle
-        r, err := strconv.ParseFloat(os.Args[1], 64)  // get radius
-
-        if err != nil {
-            msg = fmt.Sprintf("Args value ERROR")
-            log.Fatal(err)
-        } else {
-            perimeter := 2 * math.Pi * r
-            area := math.Pi * math.Pow(r, 2)
-            msg = fmt.Sprintf("This is a circle\nr = %.3f\nperimeter = %.3f\narea = %.3f", r, perimeter, area)
-        }
-    } else if args_len == 3 {  // is rectangle
-        a, err := strconv.ParseFloat(os.Args[1], 64)
-        b, err := strconv.ParseFloat(os.Args[2], 64)
-
-        if err != nil {
-            msg = fmt.Sprintln("Args value ERROR")
-            log.Fatal(err)
-        } else {
-            perimeter := 2 * (a + b)
-            area := a * b
-            msg = fmt.Sprintf("This is a rectangle\na = %.3f\nb = %.3f\nperimeter = %.3f\narea = %.3f", a, b, perimeter, area)
-        }
-    } else {
-        msg = fmt.Sprintf("Args ERROR")
-    }
-
-    fmt.Println(msg)
-    http.HandleFunc("/", http_server)
-    http.ListenAndServe(":8080", nil)
-}
-
-func http_server(response http.ResponseWriter, request *http.Request) {
-    fmt.Fprintf(response, msg)
-}
-```
+![](../imgs/Screenshotfrom2018-06-1704-45-57.png)
 
 
 
-#### step2.运行结果
+#### 0x06 发送http请求
 
-![](/home/siliconx/Pictures/Screenshot-from-2018-04-24-02-22-51.png)
+​	a.在命令行执行GET命令
 
-![](/home/siliconx/Pictures/Screenshot-from-2018-04-24-02-23-27.png)
-
-![](/home/siliconx/Pictures/Screenshot-from-2018-04-24-02-24-02.png)
+![](../imgs/Screenshotfrom2018-06-1704-46-28.png)
 
 
 
+​	b.代理程序的输出
 
-
-***
-
-
-
-## Q2 (Bash, and Bash Hard)
-
-
-
-#### step1.编写代码
-
-```bash
-#!/bin/sh
-
-if [ $# = 0 ]; then
-    echo "usage: $0 [-a -n N] directory"
-    exit 1
-fi
-
-A=""  # 参数-a
-N=10  # 参数-n的值
-
-while getopts ":an:" opt; do  # 通过getopts获取参数
-  case $opt in
-    a)
-        A="-a"
-        ;;
-    n)
-        N=$OPTARG
-        ;;
-    \?)
-        echo "Invalid args"
-        ;;
-  esac
-done
-
-# shift参数以便获取路径值
-shift $((OPTIND - 1))
-
-# 遍历路径
-for var in "$@"
-do
-    echo "$var"
-    du -h $A $var | head -n $N
-done
-
-```
-
-
-
-#### step2.运行
-
-![](/home/siliconx/code/linux/imgs/Screenshot-from-2018-04-22-22-33-37.png)
-
-![](/home/siliconx/code/linux/imgs/Screenshot-from-2018-04-22-22-34-02.png)
-
-![](/home/siliconx/code/linux/imgs/Screenshot-from-2018-04-22-22-35-54.png)
+![](../imgs/Screenshotfrom2018-06-1704-49-28.png)
