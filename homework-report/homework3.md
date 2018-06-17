@@ -1,71 +1,81 @@
-#Linux程序设计作业3
+# Homework3
 
-姓名：<u>___谢志彬____</u>
-	
-学号：<u>__6103115112_</u>
-
-邮箱地址：_________siliconx@163.com_____
-
-专业班级：_________<u>计算机科学与技术153</u>_____
+<p style="text-align: right">--计科153、谢志彬、6103115112</p>
 
 
 
-##作业名称
-
-## 网络代理
+## Q1.1: HTTP代理
 
 
 
-##实验目的
+#### step.1原理分析
 
-#####	1.理解socket机制
+![](/home/siliconx/code/LinuxProgramming/homework-report/Untitled Diagram.png)
 
-##### 	2.学习更多关于C语言的知识
+####step.2 编写源码
 
-##### 3.理解网络编程的过程
+I.proxy.c
+```c++
+// Server Side
+#include <iostream>
+#include <string>
+#include <regex>  // 正则
 
-
-
-##实验基础
-
-####	C语言、Go语言、Socket
-
-
-
-##实验步骤
-
-### Task 1: Socket it (in C)
-
-#### I.编写server.c
-
-```c
-// 服务端
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#define PORT 8000
-#define BUFFER_SIZE 1024
+#include <arpa/inet.h>  // inet_ntop/inet_pton
+#include <netdb.h>  // gethostbyname
+
+#define PORT 8888
+#define STR_SIZE 640
+#define BUFFER_SIZE 40960
+
+using namespace std;
+
+int proxy_server();
+string proxy_client(string, int, string);
+struct proxy_info rewrite_header(string);
+
+struct proxy_info {
+    string msg;
+    string hostname;
+    int port;
+};
 
 int main(int argc, char const *argv[]) {
-    printf("Server Running\n");
-    int server_fd, new_socket, valread;
+   while(1) {
+        proxy_server();
+    }
+
+    return 0;
+}
+
+int proxy_server() {
+    /*
+    * 代理服务端，负责
+    */
+    printf("Proxy Server Running on PORT: %d\n", PORT);
+    int server_fd, tcp_socket, valread;
     struct sockaddr_in address;
     int opt = 1;
     int addrlen = sizeof(address);
-    char buffer[1024] = {0};
-    char *response;  // 响应字符串
-    int count = 0;
+    int msg_len = 0;  // message length
 
-    // socket文件描述器
+    char* temp_msg = (char*) malloc(BUFFER_SIZE * sizeof(char));  // request message
+    string request;
+    string response = "HTTP/1.1 200 OK\r\nCache-Control: no-cache, private\r\n\r\nhello";  // Response string
+
+    // socket file descriptor
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
         perror("socket failed");
         exit(EXIT_FAILURE);
     }
 
-    // 设置socket端口
+    // Forcefully attaching socket to the port
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
         perror("setsockopt");
         exit(EXIT_FAILURE);
@@ -74,190 +84,254 @@ int main(int argc, char const *argv[]) {
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(PORT);
-      
-    // 绑定端口
+
+    // attaching socket to the port
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
         perror("bind failed");
         exit(EXIT_FAILURE);
     }
 
-    while(1) {
-        if (listen(server_fd, 3) < 0) {
-            perror("listen");
-            exit(EXIT_FAILURE);
-        }
-
-        if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
-            perror("accept");
-            exit(EXIT_FAILURE);
-        }
-
-        valread = read(new_socket, buffer, 1024);
-        printf("Message from client(No.%d): %s\n", count, buffer);
-
-        response = buffer;  // 返回原消息
-        send(new_socket, response, strlen(response), 0);
-        count++;
+    if (listen(server_fd, 3) < 0) {
+        perror("listen");
+        exit(EXIT_FAILURE);
     }
+
+    if ((tcp_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
+        perror("accept");
+        exit(EXIT_FAILURE);
+    }
+
+    valread = read(tcp_socket, temp_msg, BUFFER_SIZE);
+    request = temp_msg;
+    free(temp_msg);
+
+    fflush(stdout);
+
+    // replace request message, which has proxy information
+    struct proxy_info new_info = rewrite_header(request);
+
+    // resend request to real server
+    response = proxy_client(new_info.hostname, new_info.port, new_info.msg);
+
+    // string str = "GET / HTTP/1.1\r\nHost: 119.29.148.227\r\nProxy-Connection: keep-alive\r\nUser-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/67.0.3396.62 Chrome/67.0.3396.62 Safari/537.36\r\n\r\n";
+    // response = proxy_client("119.29.148.227", 80, str);
+
+    send(tcp_socket, response.c_str(), (int) response.length(), 0);
+    close(tcp_socket);
+
+    cout << "===========respones===========\n" << response << endl;
+
     return 0;
 }
 
-```
-
-
-
-#### II.编写client.c
-
-```c
-// 客户端
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#define PORT 8000
-#define BUFFER_SIZE 1024
-#define SERVER_IP "127.0.0.1"
-
-int main(int argc, char const *argv[]) {
-    printf("Client Running\n");
-    struct sockaddr_in address;
+string proxy_client(string host, int port, string request) {  // proxy client
+    printf("Proxy Client Running...\n");
     int sock = 0, valread;
     struct sockaddr_in serv_addr;
-    char *request;
-    char buffer[BUFFER_SIZE] = {0};
+    char **pptr;
+    struct hostent *hptr;
 
-    while (1) {
-        if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-            printf("\n Socket create failed \n");
-            return -1;
-        }
+    char ip[STR_SIZE];  // ip address
+    char* temp_msg = (char*) malloc(BUFFER_SIZE * sizeof(char));
+    string response;
 
-
-        memset(&serv_addr, '0', sizeof(serv_addr));
-      
-        serv_addr.sin_family = AF_INET;
-        serv_addr.sin_port = htons(PORT);
-          
-        // 将ip从字符串转成二进制形式
-        if(inet_pton(AF_INET, SERVER_IP, &serv_addr.sin_addr)<=0) {
-            printf("\nInvalid address\n");
-            return -1;
-        }
-      
-        if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-            printf("\nConnection Failed \n");
-            return -1;
-        }
-
-        printf("Enter a message: ");
-        fgets(request, BUFFER_SIZE, stdin);
-
-        // 发送请求
-        send(sock, request, strlen(request), 0);
-        valread = read(sock ,buffer, 1024);
-        printf("Response: %s\n", buffer);
+    // Convert HOSTNAME to IP
+    if ((hptr = gethostbyname(host.c_str())) == NULL) {
+        fprintf(stderr, " gethostbyname error for host: %s\n", host.c_str());
+        return NULL;
     }
-    return 0;
+    printf("HOSTNAME: %s\n", hptr->h_name);
+
+    if (hptr->h_addrtype == AF_INET
+        && (pptr = hptr->h_addr_list) != NULL) {
+            inet_ntop(hptr->h_addrtype, *pptr, ip, sizeof(ip));
+    } else {
+        fprintf(stderr, "Error call inet_ntop \n");
+    }
+
+    printf("IP: %s\nPORT: %d\n", ip, port);
+
+    // Create socket
+    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        printf("\n Socket create failed \n");
+        return NULL;
+    }
+    printf("\n Socket created \n");
+
+    memset(&serv_addr, '0', sizeof(serv_addr));
+
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(port);
+
+    // Convert IP addresses from text to binary form
+    if(inet_pton(AF_INET, ip, &serv_addr.sin_addr) <= 0) {
+        printf("\n Invalid address \n");
+        return NULL;
+    }
+
+    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        printf("\n Connection Failed \n");
+        return NULL;
+    }
+    printf("\n Connected \n");
+
+    send(sock, request.c_str(), (int) request.length(), 0);
+    valread = read(sock ,temp_msg, 1024);
+    close(sock);
+    response = temp_msg;
+    free(temp_msg);
+
+    return response;
 }
+
+
+struct proxy_info rewrite_header(string original_msg) {
+    string new_msg;
+    string full_host;
+    string hostname;
+    string port = "80";
+    struct proxy_info rewrite_data;
+
+    regex extra_host_re("Host: (.*)\r\n");  // regex for extra HOST
+    regex replace_re("CONNECT.*\r\n");  // regex for replace line with `CONNECT`
+    regex split_re("(.*):(\\d*)");  // split hostname and port
+    smatch sm;  // 存放string结果的容器
+
+    regex_search(original_msg, sm, extra_host_re);
+    if (sm.size() > 1) {
+        hostname = full_host = sm[1];
+    }
+
+    if (!full_host.empty()) {
+        regex_search(full_host, sm, split_re);
+        if (sm.size() > 2) {
+            hostname = sm[1];
+            port = sm[2];
+        }
+    }
+
+    // 去除请求头的CONNECT行
+    new_msg = regex_replace(original_msg, replace_re, "");
+
+    rewrite_data.msg = new_msg;
+    rewrite_data.hostname = hostname;
+    rewrite_data.port = atoi(port.c_str());
+
+    cout << "original message\n" << original_msg << endl;
+    cout << "new message\n" << rewrite_data.msg << endl;
+    cout << "hostname: " << rewrite_data.hostname << endl;
+    cout << "port: " << rewrite_data.port << endl;
+
+    return rewrite_data;
+}
+
 ```
 
 
 
-#### III.编译运行
+II.makefile
 
-![](/home/siliconx/Pictures/Screenshot-from-2018-05-23-22-45-21.png)
+```
+CC=g++
+
+all: proxy
+
+proxy: proxy.c
+    $(CC)  -o proxy.o -c proxy.c
+    $(CC)  -o proxy proxy.o
+
+clean:
+    rm -f proxy *.o
+
+```
 
 
 
-***
+#### step3. 编译
+
+```bash
+make
+```
+
+![](/home/siliconx/Pictures/Screenshot from 2018-06-17 03-28-22.png)
 
 
 
-### Task 2: Easier Job on the Way(in Golang)
+#### step3.运行
 
-#### I.server.go
+![](/home/siliconx/Pictures/Screenshot-from-2018-04-24-02-21-34.png)
+
+
+
+
+
+## Q1.2将上述go程序部署成http服务
+
+#### step1.修改代码
 
 ```go
 package main
 
 import (
-    "net"
     "fmt"
-    "bufio"
-)
-
-func main() {
-    fmt.Println("Server Running...")
-
-    var PORT string
-    var count int
-    PORT = ":8080"
-    count = 0
-
-    // 监听TCP的 `PORT` 端口
-    ln, _ := net.Listen("tcp", PORT)
-
-    // 接受连接
-    conn, _ := ln.Accept()
-
-    // 监听中...
-    for {
-        message, _ := bufio.NewReader(conn).ReadString('\n')
-        // 打印客户端消息
-        fmt.Printf("Message from client(%d): %s\n", count, string(message))
-
-        response := message
-        // 返回原消息
-        conn.Write([]byte(response + "\n"))
-        count++;
-    }
-}
-```
-
-
-
-#### II.client.go
-
-```go
-package main
-
-import (
-    "net"
-    "fmt"
-    "bufio"
     "os"
+    "strconv"
+    "log"
+    "math"
+    "net/http"
 )
 
-
+var msg string
 func main() {
-    fmt.Println("Client Running...")
+    args_len := len(os.Args)
+    if args_len == 2 {  // is circle
+        r, err := strconv.ParseFloat(os.Args[1], 64)  // get radius
 
-    var HOST, PORT string
-    HOST = "127.0.0.1"
-    PORT = ":8080"
+        if err != nil {
+            msg = fmt.Sprintf("Args value ERROR")
+            log.Fatal(err)
+        } else {
+            perimeter := 2 * math.Pi * r
+            area := math.Pi * math.Pow(r, 2)
+            msg = fmt.Sprintf("This is a circle\nr = %.3f\nperimeter = %.3f\narea = %.3f", r, perimeter, area)
+        }
+    } else if args_len == 3 {  // is rectangle
+        a, err := strconv.ParseFloat(os.Args[1], 64)
+        b, err := strconv.ParseFloat(os.Args[2], 64)
 
-    // 连接 `HOST` 和 `PORT` 对应的socket
-    conn, _ := net.Dial("tcp", HOST + PORT)
-    for { 
-        // 读取输入
-        reader := bufio.NewReader(os.Stdin)
-        fmt.Print("Enter a message: ")
-        text, _ := reader.ReadString('\n')
-        // 发送消息到socket
-        fmt.Fprintf(conn, text + "\n")
-        // 监听响应
-        message, _ := bufio.NewReader(conn).ReadString('\n')
-        fmt.Printf("Message from server: %s\n", message)
+        if err != nil {
+            msg = fmt.Sprintln("Args value ERROR")
+            log.Fatal(err)
+        } else {
+            perimeter := 2 * (a + b)
+            area := a * b
+            msg = fmt.Sprintf("This is a rectangle\na = %.3f\nb = %.3f\nperimeter = %.3f\narea = %.3f", a, b, perimeter, area)
+        }
+    } else {
+        msg = fmt.Sprintf("Args ERROR")
     }
+
+    fmt.Println(msg)
+    http.HandleFunc("/", http_server)
+    http.ListenAndServe(":8080", nil)
+}
+
+func http_server(response http.ResponseWriter, request *http.Request) {
+    fmt.Fprintf(response, msg)
 }
 ```
 
 
 
-#### II.编译运行
+#### step2.运行结果
 
-![](/home/siliconx/Pictures/Screenshot-from-2018-05-23-22-50-57.png)
+![](/home/siliconx/Pictures/Screenshot-from-2018-04-24-02-22-51.png)
+
+![](/home/siliconx/Pictures/Screenshot-from-2018-04-24-02-23-27.png)
+
+![](/home/siliconx/Pictures/Screenshot-from-2018-04-24-02-24-02.png)
+
+
 
 
 
@@ -265,15 +339,55 @@ func main() {
 
 
 
-##实验思考
-
- * 理解使用C语言中的Socket
- * 理解使用Go语言中的Socket
+## Q2 (Bash, and Bash Hard)
 
 
 
-##参考资料
+#### step1.编写代码
 
- * 《Golang Reference》
+```bash
+#!/bin/sh
+
+if [ $# = 0 ]; then
+    echo "usage: $0 [-a -n N] directory"
+    exit 1
+fi
+
+A=""  # 参数-a
+N=10  # 参数-n的值
+
+while getopts ":an:" opt; do  # 通过getopts获取参数
+  case $opt in
+    a)
+        A="-a"
+        ;;
+    n)
+        N=$OPTARG
+        ;;
+    \?)
+        echo "Invalid args"
+        ;;
+  esac
+done
+
+# shift参数以便获取路径值
+shift $((OPTIND - 1))
+
+# 遍历路径
+for var in "$@"
+do
+    echo "$var"
+    du -h $A $var | head -n $N
+done
+
+```
 
 
+
+#### step2.运行
+
+![](/home/siliconx/code/linux/imgs/Screenshot-from-2018-04-22-22-33-37.png)
+
+![](/home/siliconx/code/linux/imgs/Screenshot-from-2018-04-22-22-34-02.png)
+
+![](/home/siliconx/code/linux/imgs/Screenshot-from-2018-04-22-22-35-54.png)

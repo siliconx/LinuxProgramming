@@ -18,7 +18,7 @@
 
 using namespace std;
 
-int proxy_server();
+int proxy_server(int);
 string proxy_client(string, int, string);
 struct proxy_info rewrite_header(string);
 
@@ -29,19 +29,25 @@ struct proxy_info {
 };
 
 int main(int argc, char const *argv[]) {
-   while(1) {
-        proxy_server();
+    int port = 8888;
+    if (argc != 2) {
+        printf("USAGE: %s PORT\n", argv[0]);
+        exit(0);
     }
-    // struct proxy_info d = rewrite_header(str.c_str());
+
+    port = atoi(argv[1]);
+    while(1) {
+        proxy_server(port);
+    }
 
     return 0;
 }
 
-int proxy_server() {
+int proxy_server(int port) {
     /*
     * 代理服务端，负责
     */
-    printf("Proxy Server Running on PORT: %d\n", PORT);
+    printf("Proxy Server Running on PORT: %d\n", port);
     int server_fd, tcp_socket, valread;
     struct sockaddr_in address;
     int opt = 1;
@@ -50,7 +56,7 @@ int proxy_server() {
 
     char* temp_msg = (char*) malloc(BUFFER_SIZE * sizeof(char));  // request message
     string request;
-    string response = "HTTP/1.1 200 OK\r\nCache-Control: no-cache, private\r\n\r\nhello";  // Response string
+    string response;  // Response string
 
     // socket file descriptor
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
@@ -66,7 +72,7 @@ int proxy_server() {
 
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(PORT);
+    address.sin_port = htons(port);
 
     // attaching socket to the port
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
@@ -96,9 +102,6 @@ int proxy_server() {
     // resend request to real server
     response = proxy_client(new_info.hostname, new_info.port, new_info.msg);
 
-    // string str = "GET / HTTP/1.1\r\nHost: 119.29.148.227\r\nProxy-Connection: keep-alive\r\nUser-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/67.0.3396.62 Chrome/67.0.3396.62 Safari/537.36\r\n\r\n";
-    // response = proxy_client("119.29.148.227", 80, str);
- 
     send(tcp_socket, response.c_str(), (int) response.length(), 0);
     close(tcp_socket);
 
@@ -131,7 +134,6 @@ string proxy_client(string host, int port, string request) {  // proxy client
     } else {
         fprintf(stderr, "Error call inet_ntop \n");
     }
-
     printf("IP: %s\nPORT: %d\n", ip, port);
 
     // Create socket
@@ -156,7 +158,6 @@ string proxy_client(string host, int port, string request) {  // proxy client
         printf("\n Connection Failed \n");
         return NULL;
     }
-    printf("\n Connected \n");
 
     send(sock, request.c_str(), (int) request.length(), 0);
     valread = read(sock ,temp_msg, 1024);
